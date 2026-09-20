@@ -1,0 +1,22 @@
+# build
+/dist
+*.tsbuildinfo
+
+# deps
+/node_modules
+
+# env (only .env.example is tracked)
+.env
+.env.*
+!.env.example
+
+# logs / os / ide
+*.log
+npm-debug.log*
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# test output
+/coverage
