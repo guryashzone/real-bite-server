@@ -1,13 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Options } from 'pino-http';
-
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import type { LogLevel, NodeEnv } from '../config/env.schema.js';
 
 export interface LoggingSettings {
-  nodeEnv: 'development' | 'test' | 'production';
-  /** LOG_LEVEL. Defaults to info in production, debug in development, silent in tests. */
+  nodeEnv: NodeEnv;
+  /** LOG_LEVEL; see `defaultLevel` for what applies when it's unset. */
   level?: LogLevel;
+}
+
+function defaultLevel(nodeEnv: NodeEnv): LogLevel | 'silent' {
+  if (nodeEnv === 'production') return 'info';
+  if (nodeEnv === 'test') return 'silent';
+  return 'debug';
 }
 
 // Keys that must never reach a log line (docs/11 §7.4, §8). Pino redaction is
@@ -74,7 +79,7 @@ export function buildPinoHttpOptions({
 }: LoggingSettings): Options {
   const isProd = nodeEnv === 'production';
   return {
-    level: level ?? (isProd ? 'info' : nodeEnv === 'test' ? 'silent' : 'debug'),
+    level: level ?? defaultLevel(nodeEnv),
     redact: REDACT_PATHS,
     genReqId,
     // Every line logged while handling a request (ours and the request line)

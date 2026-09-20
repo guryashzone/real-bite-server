@@ -29,9 +29,10 @@ Setup: `cp .env.example .env`, then `npm run db:up`. npm is the package manager.
 
 - **Nest 12, ESM** (`"type": "module"`, `nodenext`): relative imports **must end in `.js`** (`import { X } from './x.js'`), even for `.ts` files.
 - **Vitest, not Jest; oxlint, not ESLint.** Vitest doesn't emit decorator metadata, so constructor injection uses explicit `@Inject(TOKEN)` (see `health.controller.ts`). Follow that for every injected dependency.
-- **Env is validated by zod at boot** (`src/common/config/env.schema.ts`). Add new variables there and to `.env.example`; a bad env must fail startup, never fall back silently. Read config through `ConfigService<Env, true>`.
+- **Env is validated by zod at boot** (`src/common/config/env.schema.ts`). Add new variables there and to `.env.example`; a bad env must fail startup, never fall back silently. `NODE_ENV` is required (no default), `DATABASE_URL` must be `postgres://`, `PORT` is 1-65535. Read config through `ConfigService<Env, true>`.
 - **DB access** goes through the injected `DB` token (Drizzle over a `pg` Pool, `src/common/db`). Schema files live in `src/common/db/schema/` and are re-exported from its `index.ts`.
 - **URI versioning** (`enableVersioning`, default `1`) gives `/v1/...`; `main.ts` also sets Helmet, CORS from `CORS_ORIGINS`, and a 1 MB body limit (uploads bypass the API: presigned POST straight to S3).
+- **The `pg` Pool has connect (5 s) and statement (15 s) timeouts** so a hung database can't pin connections and hang every request. A long job raises its own limit inside its transaction with `SET LOCAL statement_timeout`.
 - **`pg` Pool needs an `'error'` listener** (`db.module.ts`). Without one, restarting Postgres crashes the whole API process. Keep it.
 - The API binds `0.0.0.0` on purpose (Docker network; the port is never published in prod).
 - Node's npm cache in `~/.npm` had root-owned files on the dev machine; if `npm install` hits `EACCES`, use `--cache <tmpdir>` rather than `sudo`.

@@ -46,7 +46,16 @@ class PoolLifecycle implements OnModuleInit, OnApplicationShutdown {
       provide: PG_POOL,
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) =>
-        new pg.Pool({ connectionString: config.get('DATABASE_URL') }),
+        new pg.Pool({
+          connectionString: config.get('DATABASE_URL'),
+          // Without these, a hung database pins connections and queued
+          // requests forever (pg's defaults are "no limit"). A caller waiting
+          // for a connection fails after 5 s; a statement is cancelled by the
+          // server after 15 s. Long jobs raise it per transaction with
+          // `SET LOCAL statement_timeout`.
+          connectionTimeoutMillis: 5_000,
+          statement_timeout: 15_000,
+        }),
     },
     {
       provide: DB,

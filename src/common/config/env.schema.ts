@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 export const envSchema = z.object({
-  NODE_ENV: z
-    .enum(['development', 'test', 'production'])
-    .default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z.url(),
-  // Defaults to 'info' in production and 'debug' otherwise.
+  // Required on purpose: a production box that forgets it must fail to start,
+  // not quietly boot with development logging.
+  NODE_ENV: z.enum(['development', 'test', 'production']),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+  // Defaults: 'info' in production, 'silent' under test, 'debug' otherwise.
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   // Development aid: log each SQL statement (text only, never parameters) at debug.
   DB_LOG_QUERIES: z.stringbool().default(false),
@@ -24,6 +24,8 @@ export const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema>;
+export type NodeEnv = Env['NODE_ENV'];
+export type LogLevel = NonNullable<Env['LOG_LEVEL']>;
 
 /** Used by ConfigModule: fails the boot with a readable message on bad env. */
 export function validateEnv(raw: Record<string, unknown>): Env {
