@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { cursorField } from '../geo-cursor.js';
 
 /** Search text, trimmed. Empty after trimming is the same as absent. */
-const text = z
+const trimmedSearchText = z
   .string()
   .trim()
   .max(80)
@@ -13,7 +13,7 @@ const limit = (fallback: number, max: number) =>
 
 /** Every geographic parameter is optional: absent means global (docs/12 §3). */
 const list = {
-  q: text.optional(),
+  q: trimmedSearchText.optional(),
   cursor: cursorField.optional(),
   limit: limit(50, 100),
 };

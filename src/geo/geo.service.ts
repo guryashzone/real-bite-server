@@ -72,8 +72,8 @@ export class GeoService {
   }
 
   /** Coordinates in, coarse ids out. The coordinates themselves are never stored or echoed. */
-  async resolve({ lat, lng }: ResolveQuery): Promise<ResolvedGeo> {
-    const row = await this.repository.nearestCity(lat, lng, RESOLVE_RADIUS_M);
+  async resolve(coordinate: ResolveQuery): Promise<ResolvedGeo> {
+    const row = await this.repository.nearestCity(coordinate, RESOLVE_RADIUS_M);
     if (!row) return { country: null, region: null, city: null, confidence: 0 };
     return { ...toResolvedAncestors(row), city: toCityArea(row), confidence: DEVICE_FIX_CONFIDENCE };
   }

@@ -4,6 +4,7 @@ import { DB } from '../common/db/db.constants.js';
 import type { Database } from '../common/db/db.types.js';
 import { cities, countries, states } from '../common/db/schema/index.js';
 import type { GeoCursor } from './geo-cursor.js';
+import type { Coordinate } from './geo.types.js';
 
 export interface CountryRow {
   id: string;
@@ -99,6 +100,11 @@ function pickerOrder(t: Leveled) {
   return [desc(t.isLaunched), asc(t.name), asc(t.id)];
 }
 
+/** Autocomplete order: launched first, then names that start with `q`, then the rest. */
+function searchOrder(t: Leveled, q: string) {
+  return [desc(t.isLaunched), desc(ilike(t.name, prefixPattern(q))), asc(t.name)];
+}
+
 /** Rows strictly after the cursor in picker order (`is_launched desc` is `not is_launched asc`). */
 function afterCursor(t: Leveled, cursor: GeoCursor | undefined): SQL | undefined {
   if (!cursor) return undefined;
@@ -154,13 +160,12 @@ export class GeoRepository {
       .limit(limit + 1);
   }
 
-  /** Picker autocomplete: launched first, then names that start with `q`, then the rest. */
   searchCountries(q: string, limit: number): Promise<CountryRow[]> {
     return this.db
       .select(countryColumns)
       .from(countries)
       .where(ilike(countries.name, containsPattern(q)))
-      .orderBy(desc(countries.isLaunched), desc(ilike(countries.name, prefixPattern(q))), asc(countries.name))
+      .orderBy(...searchOrder(countries, q))
       .limit(limit);
   }
 
@@ -170,7 +175,7 @@ export class GeoRepository {
       .from(states)
       .innerJoin(countries, eq(countries.id, states.countryId))
       .where(ilike(states.name, containsPattern(q)))
-      .orderBy(desc(states.isLaunched), desc(ilike(states.name, prefixPattern(q))), asc(states.name))
+      .orderBy(...searchOrder(states, q))
       .limit(limit);
   }
 
@@ -181,12 +186,12 @@ export class GeoRepository {
       .innerJoin(countries, eq(countries.id, cities.countryId))
       .leftJoin(states, eq(states.id, cities.stateId))
       .where(ilike(cities.name, containsPattern(q)))
-      .orderBy(desc(cities.isLaunched), desc(ilike(cities.name, prefixPattern(q))), asc(cities.name))
+      .orderBy(...searchOrder(cities, q))
       .limit(limit);
   }
 
   /** The seeded city nearest to a point within `radiusM`, or none. Uses the GiST index on `center`. */
-  async nearestCity(lat: number, lng: number, radiusM: number): Promise<ResolvedRow | undefined> {
+  async nearestCity({ lat, lng }: Coordinate, radiusM: number): Promise<ResolvedRow | undefined> {
     const point = sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`;
     const [row] = await this.db
       .select({

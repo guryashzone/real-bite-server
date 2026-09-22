@@ -40,6 +40,11 @@ export interface CityArea {
   path: string[];
 }
 
+export interface Coordinate {
+  lat: number;
+  lng: number;
+}
+
 export interface Page<T> {
   items: T[];
   nextCursor: string | null;
