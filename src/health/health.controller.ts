@@ -1,7 +1,17 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get, Inject, UseFilters } from '@nestjs/common';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
+import { SkipEnvelope } from '../common/response/index.js';
 import { DatabaseHealthIndicator } from './database.health-indicator.js';
+import { HealthUnavailableFilter } from './health-unavailable.filter.js';
 
+/**
+ * Opts out of the standard response envelope: this controller's body is exactly what
+ * `@nestjs/terminus` returns, on 200 and on 503, because the external uptime check depends on
+ * that shape (docs/11 §4). `HealthUnavailableFilter` keeps the 503 body intact; `@SkipEnvelope()`
+ * keeps the 200 body intact.
+ */
+@SkipEnvelope()
+@UseFilters(HealthUnavailableFilter)
 @Controller('health')
 export class HealthController {
   constructor(

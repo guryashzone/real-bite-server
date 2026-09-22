@@ -1,4 +1,7 @@
 $kind: http-request
 url: "{{baseUrl}}/geo/search?q=ben&limit=5"
 method: GET
+queryParams:
+  q: ben
+  limit: "5"
 order: 1790200000006

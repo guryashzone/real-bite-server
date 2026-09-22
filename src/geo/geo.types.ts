@@ -45,9 +45,14 @@ export interface Coordinate {
   lng: number;
 }
 
+/**
+ * A list endpoint's `data`. Cursor, not offset — keyset pagination over launched-first/name/id
+ * order, so a page never skips or repeats a row as the picker's underlying tables grow
+ * (docs/12). Nested under `pagination` to fit the standard response envelope alongside `items`.
+ */
 export interface Page<T> {
   items: T[];
-  nextCursor: string | null;
+  pagination: { nextCursor: string | null };
 }
 
 export interface GeoSearchResult {

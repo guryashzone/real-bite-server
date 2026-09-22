@@ -50,9 +50,12 @@ src/
   common/logging/  nestjs-pino: LoggingModule, pino-options.ts (redaction, request id, dev pretty), index.ts seam
   common/db/       DbModule (pg Pool + Drizzle; exports `DB` only), db.types.ts, drizzle-query-logger.ts,
                    schema/ (geo.ts: countries/states/cities · users.ts · user-locations.ts · types.ts: citext/geography)
-  common/validation/ ZodValidationPipe (one instance per @Query/@Param/@Body; 400 in the error envelope)
+  common/validation/ ZodValidationPipe (one instance per @Query/@Param/@Body; throws ValidationFailedException)
+  common/errors/   DomainException, ValidationFailedException, GlobalExceptionFilter (APP_FILTER — the error envelope)
+  common/response/ ResponseEnvelopeInterceptor (APP_INTERCEPTOR — the success envelope), @SkipEnvelope, @ResponseMessage
   geo/             GET /v1/geo/{countries,states,cities,search,resolve}: controller → service → repository, dto/ (Zod), cursor + mapper
-  health/          GET /v1/health/live (process) and /v1/health[/ready] (503 when DB down), via terminus
+  health/          GET /v1/health/live (process) and /v1/health[/ready] (503 when DB down), via terminus;
+                   opts out of the envelope — see health-unavailable.filter.ts
 test/              health e2e only (testing is deferred)
 drizzle/           generated SQL migrations (commit them, review in PRs)
 postman/           Postman Local Mode workspace (see postman/README.md)
@@ -87,15 +90,15 @@ Full text in `../../docs/02-architecture.md` §4.1–4.7; these follow the `nest
 - **Transactions:** the orchestrating service opens one via `TransactionRunner` and passes `tx` down; repositories accept an optional executor. No ambient transaction.
 - **Ports** (`PasswordHasher`, `MailSender`, `ObjectStorage`, `SafetyScanner`, `ScanParser`, …): small interface + `Symbol` token + `@Inject`.
 - **Everything is a singleton.** No request-scoped providers, no `ModuleRef.get()`.
-- **Errors:** services throw `DomainException` subclasses with a stable `code`; one global filter builds `{ error: { code, message, details? } }`. Jobs and cron catch their own errors.
-- **Requests:** URI versioning (`enableVersioning`), strict Zod schemas on every body/query/param, global default-deny `AuthGuard` with `@Public()`, `@Roles()`, `@CurrentUser()`. Responses come from explicit mappers, never raw rows.
+- **Errors and responses:** services throw `DomainException` subclasses (`common/errors/`) with a stable `code`; the global `GlobalExceptionFilter` (`APP_FILTER`) is the only place that becomes wire JSON: `{ success: false, message, error_code, data: {}, details? }`. Every success response goes through `ResponseEnvelopeInterceptor` (`common/response/`, `APP_INTERCEPTOR`) the same way: `{ success: true, message, data }`, with a list's cursor pagination nested as `data: { items, pagination: { nextCursor } }`. `@SkipEnvelope()` and a controller-level filter are health's one opt-out (below). Jobs and cron catch their own errors — this pair only covers the request/response cycle.
+- **Requests:** URI versioning (`enableVersioning`), strict Zod schemas on every body/query/param, global default-deny `AuthGuard` with `@Public()`, `@Roles()`, `@CurrentUser()`. Responses come from explicit mappers, never raw rows; the interceptor above wraps them, so a handler never builds envelope JSON itself.
 - **Tests:** none for now; see the note under Status.
 - **Logging is `nestjs-pino`** (`docs/11` §7.4): inject `PinoLogger` (`@Inject(PinoLogger)`), `setContext(Foo.name)` once, log `logger.warn({ err, ...fields }, 'message')`. Import it from `common/logging`, the single seam. Never `console.*` (lint error) or `new Logger()`. Redaction is by configured path (`pino-options.ts`), and query strings are kept out of request lines, so don't log request bodies, OCR text, locations or full emails. `PinoLogger` is transient-scoped (the one allowed exception to singletons). Avoid `@InjectPinoLogger`: it only registers classes evaluated before `LoggingModule`, which breaks under ESM import order.
 - No N+1: one query per list. Free-text fields get `max()` lengths.
 
 ### Not built yet (by design)
 
-No auth guard, `TransactionRunner` or `userId` on log lines yet; each arrives with its first consumer. Validation is a per-parameter `ZodValidationPipe` instance (`common/validation/`) rather than one global pipe; until the global error filter and `DomainException` exist, the pipe builds the `{ error: { code, message, details } }` body itself. The health route keeps Terminus' own 503 body through `HealthUnavailableFilter`, which overrides the global filter. The readiness probe doesn't check the migration version yet.
+No auth guard, `TransactionRunner` or `userId` on log lines yet; each arrives with its first consumer. Validation is a per-parameter `ZodValidationPipe` instance (`common/validation/`) rather than one global pipe; it throws `ValidationFailedException` (`common/errors/`) and lets `GlobalExceptionFilter` build the response, same as any other `DomainException`. The health route keeps Terminus' own 200/503 body through `@SkipEnvelope()` + `HealthUnavailableFilter`, both of which override the global interceptor/filter (Nest resolves controller-level before global). The readiness probe doesn't check the migration version yet.
 - **drizzle-kit quotes custom column types**, so `"geography(Point,4326)"` in a generated migration is invalid SQL: unquote it by hand (see `drizzle/0000_init_geo.sql`). Regenerating afterwards reports no drift.
 - **Custom SQL migrations** (`drizzle-kit generate --custom --name x`) carry seed data; write them idempotently (`ON CONFLICT DO NOTHING`). A reviewed example is `0001_seed_india.sql`. Index changes still go through the schema (`db:generate`), never into a seed file.
 
@@ -113,5 +116,5 @@ Settled; don't design around them without asking.
 - **Generic catalog:** the menu belongs to the brand; never key code to specific brands/outlets (the v1 chains are seed data).
 - **Uploads are untrusted:** presigned POST with `content-length-range`, then `HeadObject` + `sharp` decode + sha256 before a photo exists (`docs/11` §4.2).
 - **Background work** runs in-process off a `jobs` table with leases, backoff and `dedupe_key` (`docs/11` §6); no SQS yet.
-- **API conventions:** JSON camelCase, cursor pagination `{ items, nextCursor }`, `Idempotency-Key` on money-writing POSTs, errors `{ error: { code, message, details? } }`, `429` with `Retry-After`. Request/response shapes will be Zod schemas in a shared package so the app imports the same types.
+- **API conventions:** JSON camelCase, every response in the standard envelope — success `{ success: true, message, data }`, error `{ success: false, message, error_code, data: {}, details? }`, a list's cursor pagination nested as `data: { items, pagination: { nextCursor } }` — `Idempotency-Key` on money-writing POSTs, `429` with `Retry-After`. `/v1/health` is the one endpoint outside this envelope (Terminus' own body; the uptime check depends on it). Request/response shapes will be Zod schemas in a shared package so the app imports the same types.
 - Photo sourcing: no scraping; Google Places store `place_id` only; YouTube embed only; never republish brand ad images or menu copy (`docs/03`).

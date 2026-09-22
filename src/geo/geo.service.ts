@@ -34,7 +34,7 @@ function toPage<R extends { id: string; name: string; isLaunched: boolean; }, T>
   const last = items.at(-1);
   return {
     items: items.map(map),
-    nextCursor: rows.length > limit && last ? encodeCursor(last) : null,
+    pagination: { nextCursor: rows.length > limit && last ? encodeCursor(last) : null },
   };
 }
 

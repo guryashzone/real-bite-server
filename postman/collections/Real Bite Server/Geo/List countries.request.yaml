@@ -1,4 +1,6 @@
 $kind: http-request
 url: "{{baseUrl}}/geo/countries?limit=50"
 method: GET
+queryParams:
+  limit: "50"
 order: 1790200000003
