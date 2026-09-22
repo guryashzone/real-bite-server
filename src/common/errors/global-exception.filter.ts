@@ -21,6 +21,9 @@ function codeForStatus(status: number): string {
   return CODE_BY_STATUS[status] ?? (status >= 500 ? 'internal_error' : 'error');
 }
 
+/** Default `Retry-After` seconds on 429 until a throttler profile provides its own value. */
+const RETRY_AFTER_SECONDS = 60;
+
 /**
  * The only place the error envelope is built (docs/02 §4.4): every thrown error becomes
  * `{ success: false, message, error_code, data: {}, details? }`, standardized per the response
@@ -40,6 +43,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
     const { status, message, code, details } = this.describe(exception);
+    if (status === HttpStatus.TOO_MANY_REQUESTS) {
+      response.setHeader('Retry-After', RETRY_AFTER_SECONDS);
+    }
     response.status(status).json({
       success: false,
       message,
