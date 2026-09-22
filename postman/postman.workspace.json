@@ -1,0 +1,27 @@
+{
+  "type": "workspace",
+  "name": "Real Bite Server",
+  "id": "real-bite-workspace",
+  "description": "Real Bite API workspace with collections, environments and globals",
+  "collections": [
+    {
+      "uid": "real-bite-server-collection",
+      "name": "Real Bite Server",
+      "href": "collections/Real Bite Server.postman_collection.json"
+    }
+  ],
+  "environments": [
+    {
+      "name": "Development (Local)",
+      "href": "environments/Development (Local).environment.yaml"
+    },
+    {
+      "name": "Staging",
+      "href": "environments/Staging.environment.yaml"
+    },
+    {
+      "name": "Production",
+      "href": "environments/Production.environment.yaml"
+    }
+  ]
+}

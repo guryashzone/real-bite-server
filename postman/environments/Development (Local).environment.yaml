@@ -1,0 +1,6 @@
+name: Development (Local)
+values:
+  - key: baseUrl
+    value: http://localhost:3000/v1
+    type: string
+    enabled: true

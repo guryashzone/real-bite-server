@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/geo/resolve?lat=12.9716&lng=77.5946"
+method: GET
+order: 1790200000007

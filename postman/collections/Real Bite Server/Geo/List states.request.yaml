@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/geo/states?limit=50"
+method: GET
+order: 1790200000004

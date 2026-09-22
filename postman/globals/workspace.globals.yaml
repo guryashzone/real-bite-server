@@ -1,0 +1,19 @@
+# Global variables shared across all environments and requests
+name: Globals
+values:
+  - key: baseUrl_dev
+    value: http://localhost:3000
+    type: string
+    enabled: true
+  - key: baseUrl_staging
+    value: https://api-staging.realbite.app
+    type: string
+    enabled: false
+  - key: baseUrl_prod
+    value: https://api.realbite.app
+    type: string
+    enabled: false
+  - key: apiVersion
+    value: v1
+    type: string
+    enabled: true

@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/geo/search?q=ben&limit=5"
+method: GET
+order: 1790200000006

@@ -1,0 +1,6 @@
+name: Production
+values:
+  - key: baseUrl
+    value: https://api.realbite.app/v1
+    type: string
+    enabled: true

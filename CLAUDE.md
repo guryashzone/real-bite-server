@@ -55,9 +55,27 @@ src/
   health/          GET /v1/health/live (process) and /v1/health[/ready] (503 when DB down), via terminus
 test/              health e2e only (testing is deferred)
 drizzle/           generated SQL migrations (commit them, review in PRs)
+postman/           Postman Local Mode workspace (see postman/README.md)
+                   - collections/Real Bite Server/: one dir per collection/folder, one
+                     <name>.request.yaml per endpoint — NOT a single collection file
+                   - environments/: dev, staging, production (flat YAML each)
+                   - globals/workspace.globals.yaml: shared variables
+                   - postman.workspace.json: workspace metadata (import-only path)
 ```
 
 Feature modules get created as they're built, following `docs/02` §4: `auth/`, `users/`, `catalog/`, `search/`, `media/`, `photos/`, `safety/`, `verification/`, `scans/`, `credits/`, `admin/`, plus `common/` (errors, idempotency, logging). `ai/`, `discovery/`, `entitlements/` are later phases.
+
+**Postman Local Mode workspace.** Lives in `postman/`; full details and the exact on-disk
+shape are in `postman/README.md` — read that before touching it. The load-bearing fact: Local
+Mode's collection format is **a directory per collection**, with `.resources/definition.yaml`
+(`$kind: collection` / `$kind: folder`) at each level and one `<name>.request.yaml` file per
+endpoint (`$kind: http-request`, `url`, `method`, `order`) — confirmed against
+`collections/v1/`, the sample Postman itself generated in this workspace. A single flat
+`*.postman_collection.yaml` file is **not** recognized by Local Mode and won't appear in the
+sidebar (an earlier pass here used that shape by mistake; don't repeat it).
+Environments/globals are flat single files and were already correct.
+**Whenever an endpoint is added, removed, renamed, or its params change, update the matching
+`.request.yaml` in the same change** — see `postman/README.md` for the exact fields.
 
 ## Code conventions (NestJS best practices)
 

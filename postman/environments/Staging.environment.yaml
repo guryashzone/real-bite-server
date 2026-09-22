@@ -1,0 +1,6 @@
+name: Staging
+values:
+  - key: baseUrl
+    value: https://api-staging.realbite.app/v1
+    type: string
+    enabled: true
