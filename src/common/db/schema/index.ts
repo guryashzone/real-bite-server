@@ -1,2 +1,5 @@
-// Tables land here in the next step (docs/11 §3). Re-export each schema file.
-export {};
+// Drizzle schema, one file per area (docs/11 §3). Re-export each here — `drizzle.config.ts` and
+// `DbModule` both read this file.
+export * from './geo.js';
+export * from './user-locations.js';
+export * from './users.js';

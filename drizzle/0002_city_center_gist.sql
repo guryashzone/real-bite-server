@@ -1,0 +1,1 @@
+CREATE INDEX "cities_center_gist" ON "cities" USING gist ("center");
