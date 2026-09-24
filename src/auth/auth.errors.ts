@@ -57,3 +57,22 @@ export class PasswordRequiredException extends DomainException {
     super('Your current password is required to make this change.');
   }
 }
+
+export class InvalidGoogleTokenException extends DomainException {
+  readonly code = 'invalid_google_token';
+  readonly status = 401;
+  constructor() {
+    super('Could not verify that Google sign-in.');
+  }
+}
+
+/** An unverified password account already owns this email (docs/11 §2.4: "an unverified one
+ * doesn't link"). Reported, not silently linked — linking here would hand Google-token access to
+ * whoever registered that email+password first, verified or not. */
+export class EmailPendingVerificationException extends DomainException {
+  readonly code = 'email_pending_verification';
+  readonly status = 409;
+  constructor() {
+    super('An account with this email already exists and needs to be verified first.');
+  }
+}
