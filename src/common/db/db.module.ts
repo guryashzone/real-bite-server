@@ -15,6 +15,7 @@ import { DB, PG_POOL } from './db.constants.js';
 import type { Database } from './db.types.js';
 import { DrizzleQueryLogger } from './drizzle-query-logger.js';
 import * as schema from './schema/index.js';
+import { TransactionRunner } from './transaction-runner.js';
 
 @Injectable()
 class PoolLifecycle implements OnModuleInit, OnApplicationShutdown {
@@ -75,8 +76,9 @@ class PoolLifecycle implements OnModuleInit, OnApplicationShutdown {
       },
     },
     PoolLifecycle,
+    TransactionRunner,
   ],
   // PG_POOL stays internal: features query through the Drizzle `DB` only.
-  exports: [DB],
+  exports: [DB, TransactionRunner],
 })
 export class DbModule {}

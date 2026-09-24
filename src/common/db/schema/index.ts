@@ -2,5 +2,6 @@
 // `DbModule` both read this file.
 export * from './auth.js';
 export * from './geo.js';
+export * from './ops.js';
 export * from './user-locations.js';
 export * from './users.js';
