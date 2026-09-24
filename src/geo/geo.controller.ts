@@ -1,4 +1,5 @@
 import { Controller, Get, Inject, Query } from '@nestjs/common';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { ResponseMessage } from '../common/response/index.js';
 import { ZodValidationPipe } from '../common/validation/zod-validation.pipe.js';
 import {
@@ -16,6 +17,7 @@ import {
 import { GeoService } from './geo.service.js';
 
 /** Public reads (docs/11 §4): the picker runs before there is an account. */
+@Public()
 @Controller('geo')
 export class GeoController {
   constructor(@Inject(GeoService) private readonly geo: GeoService) {}

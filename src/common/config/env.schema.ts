@@ -6,6 +6,9 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+  // HS256 access-token signing key (docs/11 §2.1). SSM Parameter Store in prod; no default, so a
+  // box that forgets it fails to start rather than signing tokens with an empty secret.
+  JWT_SECRET: z.string().min(32),
   // Defaults: 'info' in production, 'silent' under test, 'debug' otherwise.
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   // Development aid: log each SQL statement (text only, never parameters) at debug.

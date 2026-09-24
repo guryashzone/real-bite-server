@@ -1,5 +1,6 @@
 import { Controller, Get, Inject, UseFilters } from '@nestjs/common';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { SkipEnvelope } from '../common/response/index.js';
 import { DatabaseHealthIndicator } from './database.health-indicator.js';
 import { HealthUnavailableFilter } from './health-unavailable.filter.js';
@@ -10,6 +11,7 @@ import { HealthUnavailableFilter } from './health-unavailable.filter.js';
  * that shape (docs/11 §4). `HealthUnavailableFilter` keeps the 503 body intact; `@SkipEnvelope()`
  * keeps the 200 body intact.
  */
+@Public()
 @SkipEnvelope()
 @UseFilters(HealthUnavailableFilter)
 @Controller('health')

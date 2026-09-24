@@ -19,6 +19,9 @@ async function bootstrap() {
 
   // /v1/... today; a breaking change adds @Version('2') beside the old handler.
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
+  // One hop behind nginx (docs/11 §7.1): trust its X-Forwarded-For so req.ip is the real client,
+  // not the proxy — login lockout and rate limits key on it.
+  app.set('trust proxy', 1);
   app.use(helmet());
   app.useBodyParser('json', { limit: '1mb' });
   app.useBodyParser('urlencoded', { limit: '1mb', extended: true });
