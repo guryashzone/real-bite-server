@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { TransactionRunner } from '../common/db/transaction-runner.js';
 import { UsersRepository } from '../users/users.repository.js';
 import { AuthIdentitiesRepository } from './auth-identities.repository.js';
-import { EmailPendingVerificationException } from './auth.errors.js';
+import { AccountUnavailableException, EmailPendingVerificationException } from './auth.errors.js';
 import { GOOGLE_TOKEN_VERIFIER, type GoogleTokenVerifier } from './ports/google-token-verifier.port.js';
 import { SessionService, type DeviceInfo, type IssuedTokens } from './session.service.js';
 
@@ -30,6 +30,9 @@ export class GoogleSignInService {
     if (existingIdentity) {
       const user = await this.users.findById(existingIdentity.userId);
       if (!user) throw new Error('auth_identities row with no matching user'); // FK-guaranteed; a data bug, not a client error.
+      // docs/11 §2.1: "Rejects: suspended and deleted accounts" — checked here too, not just on
+      // password login and refresh, so a valid Google token can't bypass a suspension.
+      if (user.status !== 'active') throw new AccountUnavailableException();
       await this.identities.touchLastUsed(existingIdentity.id);
       return this.sessions.issue({ id: user.id, role: 'user', tokenVersion: user.tokenVersion }, device);
     }
@@ -38,6 +41,7 @@ export class GoogleSignInService {
       const existingUser = await this.users.findByEmail(google.email, tx);
       if (existingUser) {
         if (!existingUser.emailVerified) throw new EmailPendingVerificationException();
+        if (existingUser.status !== 'active') throw new AccountUnavailableException();
         await this.identities.create(
           { userId: existingUser.id, provider: GOOGLE_PROVIDER, providerSubject: google.subject, email: google.email, emailVerified: true },
           tx,
