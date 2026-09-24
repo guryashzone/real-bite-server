@@ -1,4 +1,4 @@
-import type { HomeLocationRow } from './user-locations.repository.js';
+import type { PlaceRef } from './place-ref.js';
 import type { ProfileRow } from './users.repository.js';
 
 export interface MeResponse {
@@ -8,11 +8,11 @@ export interface MeResponse {
   displayName: string;
   themePref: string;
   role: string;
-  homeLocation: { countryId: string | null; stateId: string | null; cityId: string | null } | null;
+  homeLocation: PlaceRef | null;
   createdAt: Date;
 }
 
-export function toMeResponse(profile: ProfileRow, home: HomeLocationRow | undefined): MeResponse {
+export function toMeResponse(profile: ProfileRow, home: PlaceRef | undefined): MeResponse {
   return {
     id: profile.id,
     email: profile.email,
@@ -20,7 +20,7 @@ export function toMeResponse(profile: ProfileRow, home: HomeLocationRow | undefi
     displayName: profile.displayName,
     themePref: profile.themePref,
     role: profile.role,
-    homeLocation: home ? { countryId: home.countryId, stateId: home.stateId, cityId: home.cityId } : null,
+    homeLocation: home ?? null,
     createdAt: profile.createdAt,
   };
 }
