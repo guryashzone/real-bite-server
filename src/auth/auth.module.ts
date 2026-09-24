@@ -19,6 +19,8 @@ import { PASSWORD_HASHER } from './ports/password-hasher.port.js';
 import { Argon2PasswordHasher } from './ports/argon2-password-hasher.js';
 import { GOOGLE_TOKEN_VERIFIER } from './ports/google-token-verifier.port.js';
 import { GoogleOAuthTokenVerifier } from './ports/google-oauth-token-verifier.js';
+import { PasswordChangeService } from './password-change.service.js';
+import { PasswordResetService } from './password-reset.service.js';
 import { RegistrationService } from './registration.service.js';
 import { SessionService } from './session.service.js';
 import { TokenService } from './token.service.js';
@@ -56,6 +58,8 @@ import { TokenService } from './token.service.js';
     RegistrationService,
     LoginService,
     GoogleSignInService,
+    PasswordResetService,
+    PasswordChangeService,
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
     { provide: MAIL_SENDER, useClass: LoggingMailSender },
     { provide: GOOGLE_TOKEN_VERIFIER, useClass: GoogleOAuthTokenVerifier },

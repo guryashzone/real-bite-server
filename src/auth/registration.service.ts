@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { PASSWORD_HASHER, type PasswordHasher } from './ports/password-hasher.port.js';
 import { MAIL_SENDER, type MailSender } from './ports/mail-sender.port.js';
@@ -9,6 +8,7 @@ import { TransactionRunner } from '../common/db/transaction-runner.js';
 import type { Database } from '../common/db/db.types.js';
 import { VERIFICATION_CODE_MAX_ATTEMPTS, VERIFICATION_CODE_TTL_MINUTES } from './auth.constants.js';
 import { InvalidVerificationCodeException } from './auth.errors.js';
+import { safeEqual } from './safe-equal.js';
 import { SessionService, type DeviceInfo, type IssuedTokens } from './session.service.js';
 import { TokenService } from './token.service.js';
 
@@ -96,10 +96,4 @@ export class RegistrationService {
       `Your verification code is ${code}. It expires in ${VERIFICATION_CODE_TTL_MINUTES} minutes.`,
     );
   }
-}
-
-function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
 }

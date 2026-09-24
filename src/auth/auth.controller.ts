@@ -6,23 +6,31 @@ import { ZodValidationPipe } from '../common/validation/zod-validation.pipe.js';
 import { CurrentUser, type AuthenticatedUser } from './current-user.js';
 import { Public } from './decorators/public.decorator.js';
 import {
+  changePasswordBody,
+  forgotPasswordBody,
   googleSignInBody,
   loginBody,
   logoutQuery,
   refreshBody,
   registerBody,
   resendVerificationBody,
+  resetPasswordBody,
   verifyEmailBody,
+  type ChangePasswordBody,
+  type ForgotPasswordBody,
   type GoogleSignInBody,
   type LoginBody,
   type LogoutQuery,
   type RefreshBody,
   type RegisterBody,
   type ResendVerificationBody,
+  type ResetPasswordBody,
   type VerifyEmailBody,
 } from './dto/auth.schemas.js';
 import { GoogleSignInService } from './google-sign-in.service.js';
 import { LoginService } from './login.service.js';
+import { PasswordChangeService } from './password-change.service.js';
+import { PasswordResetService } from './password-reset.service.js';
 import { RegistrationService } from './registration.service.js';
 import { deviceFromRequest } from './request-device.js';
 import { SessionService } from './session.service.js';
@@ -34,6 +42,8 @@ export class AuthController {
     @Inject(LoginService) private readonly loginService: LoginService,
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(GoogleSignInService) private readonly google: GoogleSignInService,
+    @Inject(PasswordResetService) private readonly passwordReset: PasswordResetService,
+    @Inject(PasswordChangeService) private readonly passwordChange: PasswordChangeService,
   ) {}
 
   @Public()
@@ -96,5 +106,30 @@ export class AuthController {
     } else {
       await this.sessions.revoke(user.sessionId);
     }
+  }
+
+  @Public()
+  @Post('password/forgot')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async forgotPassword(@Body(new ZodValidationPipe(forgotPasswordBody)) body: ForgotPasswordBody): Promise<void> {
+    await this.passwordReset.forgotPassword(body.email);
+  }
+
+  @Public()
+  @Post('password/reset')
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Password reset. Please sign in again.')
+  async resetPassword(@Body(new ZodValidationPipe(resetPasswordBody)) body: ResetPasswordBody): Promise<void> {
+    await this.passwordReset.resetPassword(body);
+  }
+
+  @Post('password/change')
+  @HttpCode(HttpStatus.OK)
+  @ResponseMessage('Password changed')
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(changePasswordBody)) body: ChangePasswordBody,
+  ): Promise<void> {
+    await this.passwordChange.change(user.id, body);
   }
 }
