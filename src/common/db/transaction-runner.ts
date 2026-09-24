@@ -14,4 +14,14 @@ export class TransactionRunner {
   run<T>(fn: (tx: Database) => Promise<T>): Promise<T> {
     return this.db.transaction(fn);
   }
+
+  /**
+   * For a method that's sometimes the top of its own transaction and sometimes called as one step
+   * inside a caller's larger one (an optional trailing `tx?: Database` parameter, the pattern
+   * throughout `auth`/`users`): reuses `tx` when given, opens a fresh transaction otherwise. Keeps
+   * that `tx ? fn(tx) : this.run(fn)` branch from being copied at every call site.
+   */
+  runOptional<T>(tx: Database | undefined, fn: (tx: Database) => Promise<T>): Promise<T> {
+    return tx ? fn(tx) : this.run(fn);
+  }
 }

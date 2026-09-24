@@ -50,9 +50,8 @@ export class SessionService {
   }
 
   /** New sign-in: Google, register, or login. */
-  async issue(user: SessionUser, device: DeviceInfo, tx?: Database): Promise<IssuedTokens> {
-    const run = (t: Database) => this.issueWithin(user, device, t);
-    return tx ? run(tx) : this.transactions.run(run);
+  issue(user: SessionUser, device: DeviceInfo, tx?: Database): Promise<IssuedTokens> {
+    return this.transactions.runOptional(tx, (t) => this.issueWithin(user, device, t));
   }
 
   private async issueWithin(user: SessionUser, device: DeviceInfo, tx: Database): Promise<IssuedTokens> {
@@ -159,19 +158,17 @@ export class SessionService {
     return { kind: 'theft' };
   }
 
-  async revoke(sessionId: string, tx?: Database): Promise<void> {
-    if (tx) return this.sessions.revoke(sessionId, tx);
-    return this.transactions.run((t) => this.sessions.revoke(sessionId, t));
+  revoke(sessionId: string, tx?: Database): Promise<void> {
+    return this.transactions.runOptional(tx, (t) => this.sessions.revoke(sessionId, t));
   }
 
   /** Logout-everywhere, password reset, account deletion (docs/11 §2.1, §2.3, §4.1): revokes every
    * live session and bumps `token_version`, so outstanding access tokens die immediately too, not
    * just future refreshes. */
-  async revokeAllForUser(userId: string, tx?: Database): Promise<void> {
-    const run = async (t: Database) => {
+  revokeAllForUser(userId: string, tx?: Database): Promise<void> {
+    return this.transactions.runOptional(tx, async (t) => {
       await this.sessions.revokeAllForUser(userId, t);
       await this.users.bumpTokenVersion(userId, t);
-    };
-    return tx ? run(tx) : this.transactions.run(run);
+    });
   }
 }
