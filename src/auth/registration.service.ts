@@ -36,7 +36,13 @@ export class RegistrationService {
 
   async register(input: { email: string; password: string; displayName: string }): Promise<void> {
     const existing = await this.users.findByEmail(input.email);
-    if (existing) return; // Enumeration-safe: same (empty) outcome as a fresh signup.
+    if (existing) {
+      // Same (empty) outcome as a fresh signup — but still pays the Argon2id cost a real signup
+      // would, discarding the result. docs/11 §2.3 requires "the same shape and timing" whether
+      // the email exists or not; skipping the hash here would be a measurable side channel.
+      await this.hasher.hash(input.password);
+      return;
+    }
 
     const passwordHash = await this.hasher.hash(input.password);
     await this.transactions.run(async (tx) => {

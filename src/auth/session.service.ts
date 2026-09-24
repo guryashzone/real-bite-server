@@ -131,6 +131,9 @@ export class SessionService {
           entityType: 'auth_session',
           entityId: session.id,
           ipHash: device.ipHash,
+          // docs/11 §2.1: "every replay writes an audit_logs row ... with session id, IP hash and
+          // user agent" — no dedicated column for it, so it travels in metadata.
+          metadata: { userAgent: device.userAgent ?? null },
         },
         tx,
       );
@@ -149,6 +152,7 @@ export class SessionService {
         entityType: 'auth_session',
         entityId: session.id,
         ipHash: device.ipHash,
+        metadata: { userAgent: device.userAgent ?? null },
       },
       tx,
     );

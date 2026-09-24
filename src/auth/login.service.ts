@@ -3,12 +3,18 @@ import { UsersRepository } from '../users/users.repository.js';
 import { PASSWORD_HASHER, type PasswordHasher } from './ports/password-hasher.port.js';
 import { LoginAttemptsRepository } from './login-attempts.repository.js';
 import {
+  DUMMY_PASSWORD_HASH,
   LOGIN_EMAIL_LOCKOUT_THRESHOLD,
   LOGIN_EMAIL_LOCKOUT_WINDOW_MINUTES,
   LOGIN_IP_LOCKOUT_THRESHOLD,
   LOGIN_IP_LOCKOUT_WINDOW_MINUTES,
 } from './auth.constants.js';
-import { AccountLockedException, EmailNotVerifiedException, InvalidCredentialsException } from './auth.errors.js';
+import {
+  AccountLockedException,
+  AccountUnavailableException,
+  EmailNotVerifiedException,
+  InvalidCredentialsException,
+} from './auth.errors.js';
 import { SessionService, type DeviceInfo, type IssuedTokens } from './session.service.js';
 import type { Role } from './decorators/roles.decorator.js';
 
@@ -47,6 +53,11 @@ export class LoginService {
 
     const user = await this.users.findByEmail(input.email);
     if (!user || !user.passwordHash) {
+      // Still pays the Argon2id cost a real wrong-password check would (docs/11 §2.3: register,
+      // login and forgot-password must have "the same shape and timing" whether the email exists
+      // or not) — verifying against a real user's hash here would leak nothing extra, but skipping
+      // the hash entirely is a measurable response-time side channel.
+      await this.hasher.verify(DUMMY_PASSWORD_HASH, input.password);
       await this.attempts.record(input.email, device.ipHash, user ? 'bad_password' : 'unknown_email');
       throw new InvalidCredentialsException();
     }
@@ -58,6 +69,9 @@ export class LoginService {
     }
 
     if (!user.emailVerified) throw new EmailNotVerifiedException();
+    // Re-checked here, not just at refresh time (docs/11 §2.1: "Rejects: suspended and deleted
+    // accounts") — a correct password must not still hand out a live session for either.
+    if (user.status !== 'active') throw new AccountUnavailableException();
 
     await this.attempts.record(input.email, device.ipHash, 'success');
     await this.users.touchLastLogin(user.id);

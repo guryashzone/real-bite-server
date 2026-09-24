@@ -27,3 +27,12 @@ export const LOGIN_EMAIL_LOCKOUT_THRESHOLD = 5;
 export const LOGIN_EMAIL_LOCKOUT_WINDOW_MINUTES = 15;
 export const LOGIN_IP_LOCKOUT_THRESHOLD = 20;
 export const LOGIN_IP_LOCKOUT_WINDOW_MINUTES = 60;
+
+/**
+ * A precomputed Argon2id hash of a fixed dummy password, verified against on a login attempt for
+ * an email that doesn't exist (or has no password) so that branch costs roughly the same CPU time
+ * as a real wrong-password check — closing the "same shape and timing" enumeration requirement
+ * (docs/11 §2.3) against a response-time side channel. Never a real user's hash.
+ */
+export const DUMMY_PASSWORD_HASH =
+  '$argon2id$v=19$m=19456,t=2,p=1$3nB1ZBTnfNiiScGBhwPBgQ$ONRiPdlxf+zfL10k9ar7GzEhKWctgCmAa28XpkiaD7Y';
