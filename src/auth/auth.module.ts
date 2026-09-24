@@ -10,12 +10,15 @@ import { AuthController } from './auth.controller.js';
 import { AuthIdentitiesRepository } from './auth-identities.repository.js';
 import { AuthSessionsRepository } from './auth-sessions.repository.js';
 import { AuthTokensRepository } from './auth-tokens.repository.js';
+import { GoogleSignInService } from './google-sign-in.service.js';
 import { LoginAttemptsRepository } from './login-attempts.repository.js';
 import { LoginService } from './login.service.js';
 import { MAIL_SENDER } from './ports/mail-sender.port.js';
 import { LoggingMailSender } from './ports/logging-mail-sender.js';
 import { PASSWORD_HASHER } from './ports/password-hasher.port.js';
 import { Argon2PasswordHasher } from './ports/argon2-password-hasher.js';
+import { GOOGLE_TOKEN_VERIFIER } from './ports/google-token-verifier.port.js';
+import { GoogleOAuthTokenVerifier } from './ports/google-oauth-token-verifier.js';
 import { RegistrationService } from './registration.service.js';
 import { SessionService } from './session.service.js';
 import { TokenService } from './token.service.js';
@@ -52,8 +55,10 @@ import { TokenService } from './token.service.js';
     SessionService,
     RegistrationService,
     LoginService,
+    GoogleSignInService,
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
     { provide: MAIL_SENDER, useClass: LoggingMailSender },
+    { provide: GOOGLE_TOKEN_VERIFIER, useClass: GoogleOAuthTokenVerifier },
   ],
   // AuthGuard/RolesGuard (APP_GUARD) and other modules read sessions through these.
   exports: [AuthSessionsRepository, TokenService, SessionService],

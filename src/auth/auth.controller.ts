@@ -6,12 +6,14 @@ import { ZodValidationPipe } from '../common/validation/zod-validation.pipe.js';
 import { CurrentUser, type AuthenticatedUser } from './current-user.js';
 import { Public } from './decorators/public.decorator.js';
 import {
+  googleSignInBody,
   loginBody,
   logoutQuery,
   refreshBody,
   registerBody,
   resendVerificationBody,
   verifyEmailBody,
+  type GoogleSignInBody,
   type LoginBody,
   type LogoutQuery,
   type RefreshBody,
@@ -19,6 +21,7 @@ import {
   type ResendVerificationBody,
   type VerifyEmailBody,
 } from './dto/auth.schemas.js';
+import { GoogleSignInService } from './google-sign-in.service.js';
 import { LoginService } from './login.service.js';
 import { RegistrationService } from './registration.service.js';
 import { deviceFromRequest } from './request-device.js';
@@ -30,7 +33,15 @@ export class AuthController {
     @Inject(RegistrationService) private readonly registration: RegistrationService,
     @Inject(LoginService) private readonly loginService: LoginService,
     @Inject(SessionService) private readonly sessions: SessionService,
+    @Inject(GoogleSignInService) private readonly google: GoogleSignInService,
   ) {}
+
+  @Public()
+  @Post('google')
+  @ResponseMessage('Signed in')
+  signInWithGoogle(@Body(new ZodValidationPipe(googleSignInBody)) body: GoogleSignInBody, @Req() req: Request) {
+    return this.google.signIn(body.idToken, deviceFromRequest(req));
+  }
 
   @Public()
   @Post('register')

@@ -9,6 +9,10 @@ export const envSchema = z.object({
   // HS256 access-token signing key (docs/11 §2.1). SSM Parameter Store in prod; no default, so a
   // box that forgets it fails to start rather than signing tokens with an empty secret.
   JWT_SECRET: z.string().min(32),
+  // Both accepted for one sign-in flow: Android Google Sign-In issues against the web client id
+  // (docs/11 §2.2).
+  GOOGLE_ANDROID_CLIENT_ID: z.string().min(1),
+  GOOGLE_WEB_CLIENT_ID: z.string().min(1),
   // Defaults: 'info' in production, 'silent' under test, 'debug' otherwise.
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
   // Development aid: log each SQL statement (text only, never parameters) at debug.
