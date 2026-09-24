@@ -8,6 +8,7 @@ import type {
   ListCountriesQuery,
   ListStatesQuery,
   ResolveQuery,
+  ResolveSignalsBody,
   SearchQuery,
 } from './dto/geo.schemas.js';
 
@@ -16,6 +17,11 @@ import type {
  * confidence, not a distance measure, so a match inside the radius is 80 wherever in it.
  */
 const DEVICE_FIX_CONFIDENCE = 80;
+
+/** docs/12 §2.3's confidence table for the two screenshot-derived signals this endpoint can
+ * actually resolve today (outlet-level signals need the `outlets` table, phase 4 — not built). */
+const CITY_TEXT_CONFIDENCE = 70;
+const COUNTRY_HINT_CONFIDENCE = 20;
 
 /**
  * How far from a seeded city centre a fix still counts as "in" that city. The catalogue has no
@@ -76,6 +82,34 @@ export class GeoService {
     const row = await this.repository.nearestCity(coordinate, RESOLVE_RADIUS_M);
     if (!row) return { country: null, region: null, city: null, confidence: 0 };
     return { ...toResolvedAncestors(row), city: toCityArea(row), confidence: DEVICE_FIX_CONFIDENCE };
+  }
+
+  /**
+   * Screenshot signals in, resolved context + confidence out (docs/11 §4, docs/12 §2.3) — never
+   * stored: "Query context ... overrides [home and last-seen], for that query only." The caller
+   * (the app, or a future `POST /v1/scans`) uses the result for that one request.
+   *
+   * The highest-confidence signal given wins: coordinates (a device fix bundled with the
+   * screenshot) beat city text, which beats a bare country hint. Outlet-level signals (a listing
+   * URL, an address match — 95 and 85 in the docs/12 table) need the `outlets` table, which
+   * doesn't exist in this repo yet (phase 4); this endpoint resolves what it can today.
+   */
+  async resolveSignals(input: ResolveSignalsBody): Promise<ResolvedGeo> {
+    if (input.lat !== undefined && input.lng !== undefined) {
+      return this.resolve({ lat: input.lat, lng: input.lng });
+    }
+
+    if (input.cityText) {
+      const row = await this.repository.bestCityMatch(input.cityText);
+      if (row) return { ...toResolvedAncestors(row), city: toCityArea(row), confidence: CITY_TEXT_CONFIDENCE };
+    }
+
+    if (input.countryHint) {
+      const row = await this.repository.findCountryByHint(input.countryHint);
+      if (row) return { country: toCountryArea(row), region: null, city: null, confidence: COUNTRY_HINT_CONFIDENCE };
+    }
+
+    return { country: null, region: null, city: null, confidence: 0 };
   }
 }
 
