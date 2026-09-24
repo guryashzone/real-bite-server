@@ -193,7 +193,43 @@ export class GeoRepository {
   /** The seeded city nearest to a point within `radiusM`, or none. Uses the GiST index on `center`. */
   async nearestCity({ lat, lng }: Coordinate, radiusM: number): Promise<ResolvedRow | undefined> {
     const point = sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`;
-    const [row] = await this.db
+    const [row] = await this.resolvedCityQuery()
+      .where(sql`ST_DWithin(${cities.center}, ${point}, ${radiusM})`)
+      .orderBy(sql`${cities.center} <-> ${point}`)
+      .limit(1);
+    return row;
+  }
+
+  /** The best trigram match for freeform city text off a screenshot (docs/12 §2.3), or none. */
+  async bestCityMatch(q: string): Promise<ResolvedRow | undefined> {
+    const [row] = await this.resolvedCityQuery()
+      .where(ilike(cities.name, containsPattern(q)))
+      .orderBy(...searchOrder(cities, q))
+      .limit(1);
+    return row;
+  }
+
+  /** ISO2 exact match first (a screenshot's country hint is usually a code), else the best name
+   * match. */
+  async findCountryByHint(hint: string): Promise<CountryRow | undefined> {
+    const [byCode] = await this.db
+      .select(countryColumns)
+      .from(countries)
+      .where(eq(countries.iso2, hint.toUpperCase()))
+      .limit(1);
+    if (byCode) return byCode;
+
+    const [byName] = await this.db
+      .select(countryColumns)
+      .from(countries)
+      .where(ilike(countries.name, containsPattern(hint)))
+      .orderBy(...searchOrder(countries, hint))
+      .limit(1);
+    return byName;
+  }
+
+  private resolvedCityQuery() {
+    return this.db
       .select({
         ...cityColumns,
         countryIso2: countries.iso2,
@@ -206,10 +242,6 @@ export class GeoRepository {
       })
       .from(cities)
       .innerJoin(countries, eq(countries.id, cities.countryId))
-      .leftJoin(states, eq(states.id, cities.stateId))
-      .where(sql`ST_DWithin(${cities.center}, ${point}, ${radiusM})`)
-      .orderBy(sql`${cities.center} <-> ${point}`)
-      .limit(1);
-    return row;
+      .leftJoin(states, eq(states.id, cities.stateId));
   }
 }

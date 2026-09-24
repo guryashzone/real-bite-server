@@ -43,3 +43,17 @@ export const resolveQuery = z.strictObject({
   lng: z.coerce.number().min(-180).max(180),
 });
 export type ResolveQuery = z.infer<typeof resolveQuery>;
+
+/** `POST /v1/geo/resolve` (docs/11 §4): screenshot-derived signals, never stored (docs/12 §2.3 —
+ * query context overrides the user's default for one request only). At least one signal required;
+ * `lat`/`lng` travel together or not at all. */
+export const resolveSignalsBody = z
+  .strictObject({
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+    cityText: z.string().trim().min(1).max(80).optional(),
+    countryHint: z.string().trim().min(1).max(80).optional(),
+  })
+  .refine((v) => (v.lat === undefined) === (v.lng === undefined), 'lat and lng must be given together')
+  .refine((v) => v.lat !== undefined || v.cityText || v.countryHint, 'At least one signal is required');
+export type ResolveSignalsBody = z.infer<typeof resolveSignalsBody>;
