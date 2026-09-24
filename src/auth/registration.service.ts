@@ -6,11 +6,11 @@ import { AuthTokensRepository } from './auth-tokens.repository.js';
 import { UsersRepository } from '../users/users.repository.js';
 import { TransactionRunner } from '../common/db/transaction-runner.js';
 import type { Database } from '../common/db/db.types.js';
-import { VERIFICATION_CODE_MAX_ATTEMPTS, VERIFICATION_CODE_TTL_MINUTES } from './auth.constants.js';
+import { VERIFICATION_CODE_TTL_MINUTES } from './auth.constants.js';
 import { InvalidVerificationCodeException } from './auth.errors.js';
-import { safeEqual } from './safe-equal.js';
 import { SessionService, type DeviceInfo, type IssuedTokens } from './session.service.js';
 import { TokenService } from './token.service.js';
+import { VerificationCodeService } from './verification-code.service.js';
 
 const EMAIL_VERIFY_PURPOSE = 'email_verify';
 
@@ -32,6 +32,7 @@ export class RegistrationService {
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(TokenService) private readonly tokenService: TokenService,
     @Inject(TransactionRunner) private readonly transactions: TransactionRunner,
+    @Inject(VerificationCodeService) private readonly verificationCodes: VerificationCodeService,
   ) {}
 
   async register(input: { email: string; password: string; displayName: string }): Promise<void> {
@@ -68,22 +69,20 @@ export class RegistrationService {
     const user = await this.users.findByEmail(input.email);
     if (!user) throw new InvalidVerificationCodeException();
 
-    return this.transactions.run(async (tx) => {
-      const token = await this.tokens.findLive(user.id, EMAIL_VERIFY_PURPOSE, tx);
-      if (!token || token.attempts >= VERIFICATION_CODE_MAX_ATTEMPTS) {
-        throw new InvalidVerificationCodeException();
-      }
+    // A wrong code still has to commit its incremented attempt count, so this never throws out of
+    // the transaction (that would roll the increment back too — see VerificationCodeService); it
+    // resolves to a result and the exception is raised only after the transaction has committed.
+    const outcome = await this.transactions.run(async (tx) => {
+      const result = await this.verificationCodes.verifyAndConsume(user.id, EMAIL_VERIFY_PURPOSE, input.code, tx);
+      if (result === 'invalid') return { kind: 'invalid' as const };
 
-      const matches = safeEqual(this.tokenService.hashCode(input.code), token.codeHash);
-      if (!matches) {
-        await this.tokens.incrementAttempts(token.id, tx);
-        throw new InvalidVerificationCodeException();
-      }
-
-      await this.tokens.consume(token.id, tx);
       await this.users.markEmailVerified(user.id, tx);
-      return this.sessions.issue({ id: user.id, role: 'user', tokenVersion: user.tokenVersion }, device, tx);
+      const tokens = await this.sessions.issue({ id: user.id, role: 'user', tokenVersion: user.tokenVersion }, device, tx);
+      return { kind: 'issued' as const, tokens };
     });
+
+    if (outcome.kind === 'invalid') throw new InvalidVerificationCodeException();
+    return outcome.tokens;
   }
 
   private async issueVerificationCode(userId: string, email: string, tx?: Database): Promise<void> {

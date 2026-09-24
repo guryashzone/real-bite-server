@@ -2,13 +2,13 @@ import { Inject, Injectable } from '@nestjs/common';
 import { TransactionRunner } from '../common/db/transaction-runner.js';
 import { UsersRepository } from '../users/users.repository.js';
 import { AuthTokensRepository } from './auth-tokens.repository.js';
-import { VERIFICATION_CODE_MAX_ATTEMPTS, VERIFICATION_CODE_TTL_MINUTES } from './auth.constants.js';
+import { VERIFICATION_CODE_TTL_MINUTES } from './auth.constants.js';
 import { InvalidVerificationCodeException } from './auth.errors.js';
 import { MAIL_SENDER, type MailSender } from './ports/mail-sender.port.js';
 import { PASSWORD_HASHER, type PasswordHasher } from './ports/password-hasher.port.js';
-import { safeEqual } from './safe-equal.js';
 import { SessionService } from './session.service.js';
 import { TokenService } from './token.service.js';
+import { VerificationCodeService } from './verification-code.service.js';
 
 const PASSWORD_RESET_PURPOSE = 'password_reset';
 
@@ -28,6 +28,7 @@ export class PasswordResetService {
     @Inject(SessionService) private readonly sessions: SessionService,
     @Inject(TokenService) private readonly tokenService: TokenService,
     @Inject(TransactionRunner) private readonly transactions: TransactionRunner,
+    @Inject(VerificationCodeService) private readonly verificationCodes: VerificationCodeService,
   ) {}
 
   async forgotPassword(email: string): Promise<void> {
@@ -48,23 +49,21 @@ export class PasswordResetService {
     const user = await this.users.findByEmail(input.email);
     if (!user) throw new InvalidVerificationCodeException();
 
-    const passwordHash = await this.hasher.hash(input.newPassword);
+    // Same reason as RegistrationService.verifyEmail: a wrong code's incremented attempt count
+    // must commit, so this resolves to a result rather than throwing out of the transaction.
+    const result = await this.transactions.run(async (tx) => {
+      const outcome = await this.verificationCodes.verifyAndConsume(user.id, PASSWORD_RESET_PURPOSE, input.code, tx);
+      if (outcome === 'invalid') return outcome;
 
-    await this.transactions.run(async (tx) => {
-      const token = await this.tokens.findLive(user.id, PASSWORD_RESET_PURPOSE, tx);
-      if (!token || token.attempts >= VERIFICATION_CODE_MAX_ATTEMPTS) {
-        throw new InvalidVerificationCodeException();
-      }
-
-      const matches = safeEqual(this.tokenService.hashCode(input.code), token.codeHash);
-      if (!matches) {
-        await this.tokens.incrementAttempts(token.id, tx);
-        throw new InvalidVerificationCodeException();
-      }
-
-      await this.tokens.consume(token.id, tx);
+      // Hashed only after the code checks out, not before: a wrong guess (capped at
+      // VERIFICATION_CODE_MAX_ATTEMPTS per code) no longer pays for an Argon2id hash of a
+      // password it's about to throw away.
+      const passwordHash = await this.hasher.hash(input.newPassword);
       await this.users.setPasswordHash(user.id, passwordHash, tx);
       await this.sessions.revokeAllForUser(user.id, tx);
+      return outcome;
     });
+
+    if (result === 'invalid') throw new InvalidVerificationCodeException();
   }
 }

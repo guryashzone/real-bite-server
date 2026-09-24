@@ -24,6 +24,7 @@ import { PasswordResetService } from './password-reset.service.js';
 import { RegistrationService } from './registration.service.js';
 import { SessionService } from './session.service.js';
 import { TokenService } from './token.service.js';
+import { VerificationCodeService } from './verification-code.service.js';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { TokenService } from './token.service.js';
     LoginAttemptsRepository,
     TokenService,
     SessionService,
+    VerificationCodeService,
     RegistrationService,
     LoginService,
     GoogleSignInService,
