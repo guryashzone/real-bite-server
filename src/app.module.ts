@@ -11,6 +11,7 @@ import { AuthGuard } from './auth/guards/auth.guard.js';
 import { RolesGuard } from './auth/guards/roles.guard.js';
 import { GeoModule } from './geo/geo.module.js';
 import { HealthModule } from './health/health.module.js';
+import { UsersModule } from './users/users.module.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { HealthModule } from './health/health.module.js';
     DbModule,
     HealthModule,
     AuthModule,
+    UsersModule,
     GeoModule,
   ],
   providers: [
