@@ -67,4 +67,10 @@ export class AuthIdentitiesRepository {
   async touchLastUsed(id: string, tx: Database = this.db): Promise<void> {
     await tx.update(authIdentities).set({ lastUsedAt: new Date() }).where(eq(authIdentities.id, id));
   }
+
+  /** Part of account deletion (docs/11 §4.1): dropping these immediately is what lets a deleted
+   * Google account sign up fresh under the same email. */
+  async deleteByUserId(userId: string, tx: Database = this.db): Promise<void> {
+    await tx.delete(authIdentities).where(eq(authIdentities.userId, userId));
+  }
 }

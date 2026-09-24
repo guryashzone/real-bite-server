@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
+import { ConsentsRepository } from './consents.repository.js';
+import { UserLocationsRepository } from './user-locations.repository.js';
+import { UsersController } from './users.controller.js';
 import { UsersRepository } from './users.repository.js';
+import { UsersService } from './users.service.js';
 
-/**
- * Just the repository for now: `auth` needs it to create and read users. The `/v1/me` controller
- * and service land in a later PR, in this same module.
- */
 @Module({
-  providers: [UsersRepository],
+  controllers: [UsersController],
+  providers: [UsersRepository, UserLocationsRepository, ConsentsRepository, UsersService],
+  // `auth` needs UsersRepository to create/read users; everything else here is `/v1/me`'s own.
   exports: [UsersRepository],
 })
 export class UsersModule {}

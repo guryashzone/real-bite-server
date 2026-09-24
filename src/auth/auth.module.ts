@@ -5,6 +5,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import type { Env } from '../common/config/env.schema.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { UsersModule } from '../users/users.module.js';
+import { AccountController } from './account.controller.js';
+import { AccountDeletionService } from './account-deletion.service.js';
 import { ACCESS_TOKEN_TTL_SECONDS } from './auth.constants.js';
 import { AuthController } from './auth.controller.js';
 import { AuthIdentitiesRepository } from './auth-identities.repository.js';
@@ -48,7 +50,7 @@ import { VerificationCodeService } from './verification-code.service.js';
       ],
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AccountController],
   providers: [
     AuthIdentitiesRepository,
     AuthSessionsRepository,
@@ -62,6 +64,7 @@ import { VerificationCodeService } from './verification-code.service.js';
     GoogleSignInService,
     PasswordResetService,
     PasswordChangeService,
+    AccountDeletionService,
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
     { provide: MAIL_SENDER, useClass: LoggingMailSender },
     { provide: GOOGLE_TOKEN_VERIFIER, useClass: GoogleOAuthTokenVerifier },
